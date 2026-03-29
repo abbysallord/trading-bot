@@ -28,31 +28,68 @@ class CoinDCXClient:
         self.secret_key = secret_key
         self.session = requests.Session()
     
-    def _get_auth_headers(self, endpoint: str, body: dict = None) -> dict:
+    def _get_auth_headers(self, json_body: str = "") -> dict:
         """
         Generate HMAC-SHA256 authenticated headers for CoinDCX.
         
-        Signature format: HMAC-SHA256(secret_key, endpoint + "|" + timestamp)
+        Signature format: HMAC-SHA256(secret_key, json_body)
         """
-        timestamp = str(int(time.time() * 1000))  # milliseconds
-        message = endpoint + "|" + timestamp
-        
         signature = hmac.new(
-            self.secret_key.encode(),
-            message.encode(),
+            self.secret_key.encode('utf-8'),
+            json_body.encode('utf-8'),
             hashlib.sha256
         ).hexdigest()
         
         headers = {
+            "Content-Type": "application/json",
             "X-AUTH-APIKEY": self.api_key,
             "X-AUTH-SIGNATURE": signature,
-            "X-COINAPI-REQUEST-ID": str(int(time.time() * 1000)),
         }
         
-        if body:
-            headers["Content-Type"] = "application/json"
-        
         return headers
+
+    def get_balances(self) -> list:
+        """Fetch all user balances."""
+        url = f"{BASE_URL}/exchange/v1/users/balances"
+        timestamp = int(round(time.time() * 1000))
+        body = {"timestamp": timestamp}
+        json_body = json.dumps(body, separators=(',', ':'))
+        
+        headers = self._get_auth_headers(json_body)
+        
+        response = self.session.post(url, data=json_body, headers=headers)
+        response.raise_for_status()
+        return response.json()
+
+    def create_order(self, side: str, symbol: str, quantity: float, price: float) -> dict:
+        """
+        Place a limit order on CoinDCX.
+        We use limit orders to prevent slippage on low volume pairs.
+        
+        Args:
+            side: "buy" or "sell"
+            symbol: CoinDCX formatted symbol (e.g. "I-BTC_INR")
+            quantity: Amount of base asset to buy/sell
+            price: Limit price for the order
+        """
+        url = f"{BASE_URL}/exchange/v1/orders/create"
+        timestamp = int(round(time.time() * 1000))
+
+        body = {
+            "side": side.lower(),
+            "order_type": "limit_order",
+            "market": symbol,
+            "price_per_unit": round(price, 4),
+            "total_quantity": round(quantity, 6),
+            "timestamp": timestamp
+        }
+
+        json_body = json.dumps(body, separators=(',', ':'))
+        headers = self._get_auth_headers(json_body)
+        
+        response = self.session.post(url, data=json_body, headers=headers)
+        response.raise_for_status()
+        return response.json()
     
     def fetch_ohlcv(self, symbol: str, timeframe: str = "1m", limit: int = 1000) -> pd.DataFrame:
         """

@@ -15,7 +15,7 @@ from config import (
     TRADING_MODE, TAKER_FEE
 )
 from core.database import insert_candle, insert_candles_bulk, get_candle_count
-from core.coindcx_api import fetch_ohlcv
+from core.coindcx_api import fetch_ohlcv, CoinDCXClient
 import pandas as pd
 
 # ── Historical data ─────────────────────────────────────────────────────────
@@ -142,8 +142,46 @@ def place_order(symbol: str, side: str, quantity: float,
 
     else:
         # LIVE order
-        print("[Order] LIVE trading is not fully implemented for CoinDCX without ccxt support!")
-        raise NotImplementedError("Live trading on CoinDCX is not supported yet.")
+        print(f"[Order] Initiating LIVE Limit {side.upper()} order for {symbol}...")
+        try:
+            fill_price = get_current_price(symbol)
+            if fill_price == 0.0:
+                print("[Order] Error getting current price for live trade, aborting.")
+                return {}
+                
+            # Convert symbol: "BTC/INR" to CoinDCX format "I-BTC_INR"
+            if "INR" in symbol:
+                coin = symbol.split("/")[0]
+                pair = f"I-{coin}_INR"
+            elif "USDT" in symbol:
+                coin = symbol.split("/")[0]
+                pair = f"B-{coin}_USDT"
+            else:
+                pair = symbol.replace("/", "")
+                
+            client = CoinDCXClient(API_KEY, SECRET_KEY)
+            response = client.create_order(side=side, symbol=pair, quantity=quantity, price=fill_price)
+            
+            if "orders" in response and len(response["orders"]) > 0:
+                order_id = response["orders"][0].get("id", f"LIVE-{int(time.time()*1000)}")
+            else:
+                order_id = response.get("id", f"LIVE-{int(time.time()*1000)}")
+            
+            fee_inr = fill_price * quantity * TAKER_FEE
+            result = {
+                "id":       order_id,
+                "price":    fill_price,
+                "filled":   quantity,
+                "fee":      fee_inr,
+                "mode":     "live",
+                "raw":      response
+            }
+            print(f"[Order] LIVE {side.upper()} {quantity:.6f} {symbol} "
+                  f"@ ₹{fill_price:.2f}  fee=₹{fee_inr:.4f} placed successfully.")
+            return result
+        except Exception as e:
+            print(f"[Order] LIVE order execution failed: {e}")
+            return {}
 
 
 def get_current_price(symbol: str) -> float:
@@ -182,7 +220,21 @@ def get_current_price(symbol: str) -> float:
 
 def get_account_balance() -> dict:
     """
-    Fetch INR and crypto balances (Mock wrapper as ccxt doesn't support CoinDCX).
+    Fetch INR and crypto balances via authenticated CoinDCX API.
     """
-    print("[Exchange] Live account balance fetch is not implemented.")
-    return {"INR": 0.0, "BTC": 0.0}
+    balances = {"INR": 0.0, "BTC": 0.0}
+    try:
+        client = CoinDCXClient(API_KEY, SECRET_KEY)
+        response = client.get_balances()
+        
+        # response is usually a list of dicts: [{"currency": "INR", "balance": "500.0", "locked_balance": "0.0"}, ...]
+        if isinstance(response, list):
+            for item in response:
+                currency = item.get("currency")
+                if currency in balances:
+                    balances[currency] = float(item.get("balance", "0.0"))
+        
+        return balances
+    except Exception as e:
+        print(f"[Exchange] Live account balance fetch failed: {e}")
+        return balances
