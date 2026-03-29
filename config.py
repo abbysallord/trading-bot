@@ -56,4 +56,4 @@ ALERTS_ENABLED     = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
 # "paper"  → runs full logic, logs trades, but never places real orders
 # "live"   → places real orders on the exchange
 # Start with "paper". Only switch to "live" after consistent paper profits.
-TRADING_MODE       = "Live"
+TRADING_MODE       = "live"

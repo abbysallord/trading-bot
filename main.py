@@ -7,9 +7,11 @@ import sys
 from datetime import datetime
 
 from config import (
-    SYMBOLS, TIMEFRAME, STARTING_CAPITAL,
-    TRADING_MODE, MIN_CANDLES
+    SYMBOLS, TIMEFRAME, STARTING_CAPITAL, MIN_CANDLES
 )
+from config import TRADING_MODE as _TM
+TRADING_MODE = _TM.lower()
+
 from core.database   import init_db, get_recent_candles, open_trade, close_trade
 from core.exchange   import fetch_historical_candles, live_candle_feed, place_order, get_current_price
 from core.indicators import compute_indicators, get_latest_signals, describe_market_state
