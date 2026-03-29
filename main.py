@@ -206,34 +206,32 @@ def _close_position(sym: str, price: float, exit_reason: str, signals: dict) -> 
 
 # ── Startup ──────────────────────────────────────────────────────────────────
 async def main():
-    print("=" * 60)
-    print(f"  CoinDCX Trading Bot")
-    print(f"  Mode:    {TRADING_MODE.upper()}")
-    print(f"  Symbols: {', '.join(SYMBOLS)}")
-    print(f"  Capital: ₹{STARTING_CAPITAL:.2f}")
-    print(f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
-
     if TRADING_MODE == "live":
-        print("\n⚠️  WARNING: LIVE mode is active. Real orders will be placed.")
-        print("   Press Ctrl+C within 5 seconds to abort.\n")
-        await asyncio.sleep(5)
-        
         from core.exchange import get_account_balance
         try:
             balances = get_account_balance()
             actual_inr = balances.get("INR", 0.0)
-            print(f"[Main] Live Mode Enabled. Fetching real balance: ₹{actual_inr:.2f}")
             if actual_inr > 0:
                 global risk
                 risk.starting_capital = actual_inr
                 risk.current_capital  = actual_inr
                 risk.peak_capital     = actual_inr
-                print(f"[Main] Risk Manager synced to live capital: ₹{actual_inr:.2f}")
-            else:
-                print(f"[Main] ⚠️ Live balance is zero or fetch failed. Check credentials!")
         except Exception as e:
             print(f"[Main] Error fetching live account balance: {e}")
+
+    print("=" * 60)
+    print(f"  CoinDCX Trading Bot")
+    print(f"  Mode:    {TRADING_MODE.upper()}")
+    print(f"  Symbols: {', '.join(SYMBOLS)}")
+    print(f"  Capital: ₹{risk.starting_capital:.2f}")
+    print(f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 60)
+
+    if TRADING_MODE == "live":
+        print("\n⚠️  WARNING: LIVE mode is active. Real orders will be placed.")
+        print(f"   Live balance synced directly from CoinDCX API: ₹{risk.starting_capital:.2f}")
+        print("   Press Ctrl+C within 5 seconds to abort.\n")
+        await asyncio.sleep(5)
 
     # Initialise database
     init_db()
@@ -253,7 +251,7 @@ async def main():
             print(f"[Main] {count} candles loaded for {sym}. Indicators ready.")
 
     # Send startup alert
-    alert_startup(TRADING_MODE, ", ".join(SYMBOLS), STARTING_CAPITAL)
+    alert_startup(TRADING_MODE, ", ".join(SYMBOLS), risk.starting_capital)
 
     # Start live feed
     print(f"\n[Main] Starting live candle feed...\n")
