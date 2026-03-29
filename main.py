@@ -216,6 +216,22 @@ async def main():
         print("\n⚠️  WARNING: LIVE mode is active. Real orders will be placed.")
         print("   Press Ctrl+C within 5 seconds to abort.\n")
         await asyncio.sleep(5)
+        
+        from core.exchange import get_account_balance
+        try:
+            balances = get_account_balance()
+            actual_inr = balances.get("INR", 0.0)
+            print(f"[Main] Live Mode Enabled. Fetching real balance: ₹{actual_inr:.2f}")
+            if actual_inr > 0:
+                global risk
+                risk.starting_capital = actual_inr
+                risk.current_capital  = actual_inr
+                risk.peak_capital     = actual_inr
+                print(f"[Main] Risk Manager synced to live capital: ₹{actual_inr:.2f}")
+            else:
+                print(f"[Main] ⚠️ Live balance is zero or fetch failed. Check credentials!")
+        except Exception as e:
+            print(f"[Main] Error fetching live account balance: {e}")
 
     # Initialise database
     init_db()

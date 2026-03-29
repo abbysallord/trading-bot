@@ -79,8 +79,8 @@ class CoinDCXClient:
             "side": side.lower(),
             "order_type": "limit_order",
             "market": symbol,
-            "price_per_unit": round(price, 4),
-            "total_quantity": round(quantity, 6),
+            "price_per_unit": round(price, 8),
+            "total_quantity": round(quantity, 8),
             "timestamp": timestamp
         }
 

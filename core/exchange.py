@@ -160,7 +160,11 @@ def place_order(symbol: str, side: str, quantity: float,
                 pair = symbol.replace("/", "")
                 
             client = CoinDCXClient(API_KEY, SECRET_KEY)
-            response = client.create_order(side=side, symbol=pair, quantity=quantity, price=fill_price)
+            
+            # Aggressive Limit Order (Market-Taker execution with max 0.3% slippage protection)
+            aggressive_price = fill_price * 1.003 if side == "buy" else fill_price * 0.997
+            
+            response = client.create_order(side=side, symbol=pair, quantity=quantity, price=aggressive_price)
             
             if "orders" in response and len(response["orders"]) > 0:
                 order_id = response["orders"][0].get("id", f"LIVE-{int(time.time()*1000)}")
@@ -220,19 +224,21 @@ def get_current_price(symbol: str) -> float:
 
 def get_account_balance() -> dict:
     """
-    Fetch INR and crypto balances via authenticated CoinDCX API.
+    Fetch all active balances dynamically via authenticated CoinDCX API.
     """
-    balances = {"INR": 0.0, "BTC": 0.0}
+    balances = {"INR": 0.0}
     try:
         client = CoinDCXClient(API_KEY, SECRET_KEY)
         response = client.get_balances()
         
-        # response is usually a list of dicts: [{"currency": "INR", "balance": "500.0", "locked_balance": "0.0"}, ...]
         if isinstance(response, list):
             for item in response:
                 currency = item.get("currency")
-                if currency in balances:
-                    balances[currency] = float(item.get("balance", "0.0"))
+                balance_val = float(item.get("balance", "0.0"))
+                if currency and balance_val > 0.0:
+                    balances[currency] = balance_val
+                elif currency == "INR":
+                    balances[currency] = balance_val # Ensure INR is always tracked even if 0
         
         return balances
     except Exception as e:
