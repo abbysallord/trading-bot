@@ -20,23 +20,23 @@ MISTRAL_API_KEY    = os.getenv("MISTRAL_API_KEY", "")
 
 # ── Capital & Position Sizing ───────────────────────────────────────────────
 STARTING_CAPITAL   = 5000.0        # INR — your total deployed capital
-MAX_POSITION_SIZE  = 1500.0        # INR — max value of a single trade (30%)
+MAX_POSITION_SIZE  = 4500.0        # INR — max value of a single trade (90%)
 MAX_CONCURRENT     = 1             # Only 1 open position at a time
 
 # ── Risk Guardrails (hard limits — do not loosen these early on) ────────────
 DAILY_LOSS_LIMIT   = 1000.0        # INR — bot halts for the day if hit (20%)
 MAX_DRAWDOWN_PCT   = 0.35          # 35% drawdown from peak → full stop
-STOP_LOSS_PCT      = 0.05          # 5% stop-loss per trade (volatile coins)
-TAKE_PROFIT_PCT    = 0.12          # 12% take-profit per trade (high reward)
+STOP_LOSS_PCT      = 0.05          # 5% max disaster stop-loss per trade
+TAKE_PROFIT_PCT    = float('inf')  # Let winners run infinitely (no hard TP ceiling)
 MAX_TRADES_PER_DAY = 20            # Fee erosion control
 COOLDOWN_SECONDS   = 300           # 5-min cooldown after a losing trade
 
-# ── Strategy Parameters (Bollinger Band Mean Reversion) ────────────────────
-BB_PERIOD          = 30            # Bollinger Band rolling window (longer to avoid fakeouts)
-BB_STD             = 2.5           # Standard deviations for bands (extreme crashes only)
-RSI_PERIOD         = 14            # RSI period
-RSI_OVERSOLD       = 30            # Buy signal threshold (strict: < 30 for primary entry)
-RSI_OVERBOUGHT     = 70            # Sell signal threshold (strict: > 62 for overbought)
+# ── Strategy Parameters (Asymmetric Trend-Rider) ───────────────────────────
+EMA_FAST           = 4             # Ultra-fast momentum EMA
+EMA_SLOW           = 9             # Fast momentum EMA
+SMA_TREND          = 20            # Macro trend filter SMA (20h for faster shifts)
+ATR_PERIOD         = 14            # ATR lookback window
+ATR_MULTIPLIER     = 4.0           # Static mathematical trailing stop multiplier
 MIN_CANDLES        = 50            # Minimum candles needed before trading starts
 
 # ── Fees ───────────────────────────────────────────────────────────────────
@@ -56,4 +56,4 @@ ALERTS_ENABLED     = bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
 # "paper"  → runs full logic, logs trades, but never places real orders
 # "live"   → places real orders on the exchange
 # Start with "paper". Only switch to "live" after consistent paper profits.
-TRADING_MODE       = "live"
+TRADING_MODE       = "paper"
